@@ -1,0 +1,146 @@
+﻿local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualUser = game:GetService("VirtualUser")
+
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+
+local claimRF = ReplicatedStorage.Packages._Index
+    :FindFirstChild("sleitnick_knit@1.5.1")
+    .knit.Services.EventService.RF.ClaimBlueprint
+
+
+local eggLocations = {
+    {name="April4_2026_1",  x=-3017, y=127, z=-53},
+    {name="April4_2026_2",  x=-2266, y=128, z=241},
+    {name="April4_2026_3",  x=-341,  y=128, z=1390},
+    {name="April4_2026_4",  x=-493,  y=124, z=-270},
+    {name="April4_2026_5",  x=-1564, y=128, z=1394},
+    {name="April4_2026_6",  x=-540,  y=126, z=-1160},
+    {name="April4_2026_7",  x=658,   y=124, z=-746},
+    {name="April4_2026_9",  x=2901,  y=128, z=-2009},
+    {name="April4_2026_10", x=1472,  y=129, z=-2311},
+    {name="April4_2026_11", x=-2076, y=128, z=-2075},
+    {name="April4_2026_12", x=-3058, y=128, z=-917},
+    {name="April4_2026_13", x=-1688, y=128, z=-1722},
+    {name="April4_2026_14", x=2025,  y=131, z=1407},
+    {name="April4_2026_15", x=1996,  y=128, z=443},
+    {name="April4_2026_16", x=1014,  y=125, z=628},
+    {name="April4_2026_17", x=2911,  y=128, z=-1561},
+    {name="April4_2026_18", x=1942,  y=127, z=-2350},
+    {name="April4_2026_19", x=642,   y=127, z=-2173},
+    {name="April4_2026_20", x=663,   y=128, z=-3419},
+    {name="April4_2026_21", x=518,   y=124, z=-579},
+    {name="April4_2026_23", x=-2436, y=128, z=-3152},
+    {name="April4_2026_25", x=1147,  y=128, z=1099},
+}
+
+
+local COOLDOWN_MINUTES = 13
+local totalClaimed = 0
+local totalFailed = 0
+local roundNumber = 0
+local startTime = tick()
+
+
+-- Anti-AFK: fires every 2 minutes
+spawn(function()
+    while true do
+        wait(120)
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new(0, 0))
+        print("🔄 Anti-AFK triggered")
+    end
+end)
+
+
+-- Auto rejoin if character dies/respawns
+player.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    rootPart = newChar:WaitForChild("HumanoidRootPart")
+    print("♻️ Character respawned, continuing...")
+end)
+
+
+local function getTimeRunning()
+    local elapsed = math.floor(tick() - startTime)
+    local hrs = math.floor(elapsed / 3600)
+    local mins = math.floor((elapsed % 3600) / 60)
+    local secs = elapsed % 60
+    return string.format("%02d:%02d:%02d", hrs, mins, secs)
+end
+
+
+local function collectAllEggs()
+    roundNumber = roundNumber + 1
+    local roundClaimed = 0
+    local roundFailed = 0
+
+
+    -- Make sure character is still valid
+    if not rootPart or not rootPart.Parent then
+        character = player.Character or player.CharacterAdded:Wait()
+        rootPart = character:WaitForChild("HumanoidRootPart")
+    end
+
+
+    print("============================")
+    print("🔄 Round " .. roundNumber .. " | Running: " .. getTimeRunning())
+    print("============================")
+
+
+    for _, egg in ipairs(eggLocations) do
+        -- Safety check before each teleport
+        if not rootPart or not rootPart.Parent then
+            character = player.Character or player.CharacterAdded:Wait()
+            rootPart = character:WaitForChild("HumanoidRootPart")
+        end
+
+
+        rootPart.CFrame = CFrame.new(egg.x, egg.y + 5, egg.z)
+        wait(0.5)
+
+
+        local success, _ = pcall(function()
+            claimRF:InvokeServer(egg.name)
+        end)
+
+
+        if success then
+            roundClaimed = roundClaimed + 1
+            totalClaimed = totalClaimed + 1
+            print("✓ " .. egg.name .. " (" .. roundClaimed .. "/" .. #eggLocations .. ")")
+        else
+            roundFailed = roundFailed + 1
+            totalFailed = totalFailed + 1
+            print("❌ " .. egg.name)
+        end
+
+
+        wait(0.3)
+    end
+
+
+    print("============================")
+    print("✅ Round " .. roundNumber .. " done! | " .. getTimeRunning())
+    print("✓ This round: " .. roundClaimed)
+    print("❌ Failed this round: " .. roundFailed)
+    print("🏆 Total claimed: " .. totalClaimed)
+    print("⏰ Next round in " .. COOLDOWN_MINUTES .. " mins...")
+    print("============================")
+end
+
+
+print("🚀 Egg collector started!")
+print("🥚 " .. #eggLocations .. " eggs loaded")
+print("⏰ Cooldown: " .. COOLDOWN_MINUTES .. " mins")
+print("🛡️ Anti-AFK: ON")
+
+
+while true do
+    collectAllEggs()
+    wait(COOLDOWN_MINUTES * 60)
+end
