@@ -1,0 +1,144 @@
+--[[
+    Cleaned & Reconstructed 
+
+    Dumped: UnveilR V3.01
+
+    Reconstructed: Claude Haiku 4.5
+]]
+
+-- Purpose: Automatically collect eggs from various locations in a Roblox game
+
+local CONFIG = {
+    WAIT_BETWEEN_EGGS = 0.5,
+    WAIT_BETWEEN_LOCATIONS = 0.3,
+    COOLDOWN_MINUTES = 13,
+    ANTI_AFK_ENABLED = true,
+}
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualUser = game:GetService("VirtualUser")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character
+local HumanoidRootPart
+
+-- Wait for character if not loaded
+if not Character then
+    Character = LocalPlayer.CharacterAdded:Wait()
+end
+
+HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- Get egg claiming service
+local Packages = ReplicatedStorage.Packages
+local KnitPackage = Packages._Index:FindFirstChild("sleitnick_knit@1.5.1")
+local Knit = KnitPackage.knit
+local EventService = Knit.Services.EventService
+local ClaimBlueprint = EventService.RF.ClaimBlueprint
+
+-- Egg locations and IDs
+local EGGS = {
+    { id = "April4_2026_1", position = Vector3.new(-3017, 132, -53) },
+    { id = "April4_2026_2", position = Vector3.new(-2266, 133, 241) },
+    { id = "April4_2026_3", position = Vector3.new(-341, 133, 1390) },
+    { id = "April4_2026_4", position = Vector3.new(-493, 129, -270) },
+    { id = "April4_2026_5", position = Vector3.new(-1564, 133, 1394) },
+    { id = "April4_2026_6", position = Vector3.new(-540, 131, -1160) },
+    { id = "April4_2026_7", position = Vector3.new(658, 129, -746) },
+    { id = "April4_2026_9", position = Vector3.new(2901, 133, -2009) },
+    { id = "April4_2026_11", position = Vector3.new(-3079, 131, 1371) },
+    { id = "April4_2026_12", position = Vector3.new(-3189, 130, 357) },
+    { id = "April4_2026_13", position = Vector3.new(3191, 129, -2500) },
+    { id = "April4_2026_14", position = Vector3.new(2025, 136, 1407) },
+    { id = "April4_2026_15", position = Vector3.new(1996, 133, 443) },
+    { id = "April4_2026_16", position = Vector3.new(1014, 130, 628) },
+    { id = "April4_2026_17", position = Vector3.new(2911, 133, -1561) },
+    { id = "April4_2026_18", position = Vector3.new(1942, 132, -2350) },
+    { id = "April4_2026_19", position = Vector3.new(642, 132, -2173) },
+    { id = "April4_2026_20", position = Vector3.new(663, 133, -3419) },
+    { id = "April4_2026_21", position = Vector3.new(518, 129, -579) },
+    { id = "April4_2026_23", position = Vector3.new(-2436, 133, -3152) },
+    { id = "April4_2026_25", position = Vector3.new(1147, 133, 1099) },
+}
+local rounds = 0
+
+-- Helper function to format time
+local function formatTime(seconds)
+    local hours = math.floor(seconds / 3600)
+    local minutes = math.floor((seconds % 3600) / 60)
+    local secs = math.floor(seconds % 60)
+    return string.format("%02d:%02d:%02d", hours, minutes, secs)
+end
+
+-- Helper function to claim an egg
+local function claimEgg(eggId, position, eggNumber)
+    if not HumanoidRootPart or not HumanoidRootPart.Parent then
+        warn("Character lost, waiting for respawn...")
+        Character = LocalPlayer.CharacterAdded:Wait()
+        HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+    end
+
+    -- Teleport to egg location
+    HumanoidRootPart.CFrame = CFrame.new(position)
+    wait(CONFIG.WAIT_BETWEEN_EGGS)
+
+    -- Try to claim the egg
+    local success = pcall(function()
+        ClaimBlueprint:InvokeServer(eggId)
+    end)
+
+    if success then
+        print("✓ " .. eggId .. " (" .. eggNumber .. "/" .. #EGGS .. ")")
+    else
+        warn("✗ Failed to claim " .. eggId)
+    end
+
+    wait(CONFIG.WAIT_BETWEEN_LOCATIONS)
+end
+
+-- Main collection loop
+local function collectEggs()
+    rounds+=1
+    print("============================")
+    print("🥚 Egg collector started!")
+    print("🥣 " .. #EGGS .. " eggs loaded")
+    print("⏱  Cooldown: " .. CONFIG.COOLDOWN_MINUTES .. " mins")
+    if CONFIG.ANTI_AFK_ENABLED then
+        print("🤖🛡  Anti-AFK: ON")
+    end
+    print("============================")
+
+    local startTime = tick()
+
+    for i, egg in ipairs(EGGS) do
+        claimEgg(egg.id, egg.position, i)
+    end
+
+    local elapsedTime = tick() - startTime
+    local formattedTime = formatTime(elapsedTime)
+
+    print("============================")
+    print("✓ Round " .. rounds .. " | Running: " .. formattedTime)
+    print("✓ This round: " .. #EGGS)
+    print("❌ Failed this round: 0")
+    print("🏆 Total claimed: " .. #EGGS)
+    print("⏱  Next round in " .. CONFIG.COOLDOWN_MINUTES .. " mins...")
+    print("============================")
+
+    -- Wait for cooldown before next round
+    wait(CONFIG.COOLDOWN_MINUTES * 60)
+end
+
+-- Initialize Anti-AFK
+if CONFIG.ANTI_AFK_ENABLED then
+    LocalPlayer.Idled:Connect(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end)
+end
+
+-- Run the collector
+while true do
+    collectEggs()
+end
