@@ -1,3 +1,5 @@
+# ⚠️ this repo is no longer maintained (event ended)
+
 ## 📜 Script
 
 ```lua
